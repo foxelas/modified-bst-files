@@ -1,4 +1,4 @@
-%  spiejour.bib
+%  spiejour.bib - Modified by foxelas
 %  for SPIE journals
 
 ENTRY
@@ -26,7 +26,7 @@ ENTRY
     year
   }
   {}
-  { label short.list}
+  { label extra.label sort.label short.list }
 
 INTEGERS { output.state before.all mid.sentence after.quote after.sentence
 		after.quoted.block after.block }
@@ -88,6 +88,7 @@ FUNCTION {output.check}
     'output.nonnull
   if$
 }
+
 
 
 FUNCTION {blank.sep}
@@ -166,6 +167,15 @@ FUNCTION {new.sentence.checka}
   if$
 }
 
+FUNCTION {new.sentence.checkb}
+{ empty$
+  swap$ empty$
+  and
+    'skip$
+    'new.sentence
+  if$
+}
+
 FUNCTION {field.or.null}
 { duplicate$ empty$
     { pop$ "" }
@@ -229,6 +239,13 @@ FUNCTION {format.names}
       namesleft #1 - 'namesleft :=
     }
   while$
+}
+
+FUNCTION {format.key}
+{ empty$
+    { key field.or.null }
+    { "" }
+  if$
 }
 
 FUNCTION {format.authors}
@@ -336,8 +353,8 @@ FUNCTION {make.full.names}
 
 FUNCTION {output.bibitem}
 { newline$
-  "\bibitem[" 
-   make.full.names duplicate$ short.list =
+  "\bibitem["
+  make.full.names duplicate$ short.list =
      { pop$ }
      { * }
    if$
@@ -348,7 +365,6 @@ FUNCTION {output.bibitem}
   ""
   before.all 'output.state :=
 }
-
 
 FUNCTION {n.dashify}
 { 't :=
@@ -492,7 +508,6 @@ FUNCTION {format.number}
 %%    { "no.~" number * }        %% ieeetr
   if$
 }
-
 FUNCTION {format.journal.volume.number}
 { journal empty$
     { "empty " t * " in " * cite$ * warning$ ""}
@@ -534,6 +549,28 @@ FUNCTION {format.volume}
 %%    { "vol.~" volume * }
   if$
 }
+
+FUNCTION {format.vol.num.pages}
+{ volume field.or.null
+  number empty$
+    'skip$
+    { "\penalty0 (" number * ")" * *
+      volume empty$
+        { "there's a number but no volume in " cite$ * warning$ }
+        'skip$
+      if$
+    }
+  if$
+  pages empty$
+    'skip$
+    { duplicate$ empty$
+        { pop$ format.pages }
+        { ":\penalty0 " * pages n.dashify * }
+      if$
+    }
+  if$
+}
+
 
 FUNCTION {format.chapter.pages}
 { chapter empty$
@@ -1066,6 +1103,11 @@ MACRO {tcs} {"Theoretical Computer Science"}
 
 READ
 
+FUNCTION {sortify}
+{ purify$
+  "l" change.case$
+}
+
 INTEGERS { len }
 
 FUNCTION {chop.word}
@@ -1183,9 +1225,39 @@ FUNCTION {calc.label}
   'label :=
 }
 
-STRINGS { longest.label }
+INTEGERS { seq.num }
 
-INTEGERS { number.label longest.label.width }
+FUNCTION {init.seq}
+{ #0 'seq.num :=}
+
+EXECUTE {init.seq}
+
+FUNCTION {int.to.fix}
+{ "000000000" swap$ int.to.str$ *
+  #-1 #10 substring$
+}
+
+
+FUNCTION {presort}
+{ calc.label
+  label sortify
+  "    "
+  *
+  seq.num #1 + 'seq.num :=
+  seq.num  int.to.fix
+  'sort.label :=
+  sort.label *
+  #1 entry.max$ substring$
+  'sort.key$ :=
+}
+
+ITERATE {presort}
+
+SORT
+
+STRINGS { longest.label last.label next.extra }
+
+INTEGERS { longest.label.width last.extra.num number.label }
 
 FUNCTION {initialize.longest.label}
 { "" 'longest.label :=
@@ -1204,16 +1276,67 @@ FUNCTION {longest.label.pass}
   if$
 }
 
+FUNCTION {forward.pass}
+{ last.label label =
+    { last.extra.num #1 + 'last.extra.num :=
+      last.extra.num int.to.chr$ 'extra.label :=
+    }
+    { "a" chr.to.int$ 'last.extra.num :=
+      "" 'extra.label :=
+      label 'last.label :=
+    }
+  if$
+  number.label #1 + 'number.label :=
+}
+
+FUNCTION {reverse.pass}
+{ next.extra "b" =
+    { "a" 'extra.label := }
+    'skip$
+  if$
+  extra.label 'next.extra :=
+  extra.label
+  duplicate$ empty$
+    'skip$
+    { "{\natexlab{" swap$ * "}}" * }
+  if$
+  'extra.label :=
+  label extra.label * 'label :=
+}
+
 EXECUTE {initialize.longest.label}
 
 ITERATE {longest.label.pass}
 
+ITERATE {forward.pass}
+
+REVERSE {reverse.pass}
+
+FUNCTION {bib.sort.order}
+{ sort.label  'sort.key$ :=
+}
+
+ITERATE {bib.sort.order}
+
+SORT
+
 FUNCTION {begin.bib}
-{ preamble$ empty$
+{   preamble$ empty$
     'skip$
     { preamble$ write$ newline$ }
   if$
-  "\begin{thebibliography}{"  longest.label  * "}" * write$ newline$
+  "\begin{thebibliography}{"  longest.label  * "}" *
+  write$ newline$
+  "\providecommand{\natexlab}[1]{#1}"
+  write$ newline$
+  "\providecommand{\url}[1]{\texttt{#1}}"
+  write$ newline$
+  "\expandafter\ifx\csname urlstyle\endcsname\relax"
+  write$ newline$
+  "  \providecommand{\doi}[1]{doi: #1}\else"
+  write$ newline$
+  "  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi"
+  write$ newline$
 }
 
 EXECUTE {begin.bib}
