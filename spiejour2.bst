@@ -287,19 +287,21 @@ FUNCTION {format.full.names}
   s num.names$ 'numnames :=
   numnames 'namesleft :=
     { namesleft #0 > }
-    { s nameptr
-      "{vv~}{ll}" format.name$ 't :=
+    { s nameptr "{vv~}{ll}" format.name$ 't :=
       nameptr #1 >
         {
-          namesleft #1 >
-            { ", " * t * }
-            {
+		namesleft #1 >
+			{ ", " * t * }
+            { s nameptr "{ll}" format.name$ duplicate$ "others" =
+                { 't := }
+                { pop$ }
+              if$
               numnames #2 >
                 { "," * }
                 'skip$
               if$
               t "others" =
-                { " et~al." * }
+                { " {\em et~al.}" * }
                 { " and " * t * }
               if$
             }
@@ -549,28 +551,6 @@ FUNCTION {format.volume}
 %%    { "vol.~" volume * }
   if$
 }
-
-FUNCTION {format.vol.num.pages}
-{ volume field.or.null
-  number empty$
-    'skip$
-    { "\penalty0 (" number * ")" * *
-      volume empty$
-        { "there's a number but no volume in " cite$ * warning$ }
-        'skip$
-      if$
-    }
-  if$
-  pages empty$
-    'skip$
-    { duplicate$ empty$
-        { pop$ format.pages }
-        { ":\penalty0 " * pages n.dashify * }
-      if$
-    }
-  if$
-}
-
 
 FUNCTION {format.chapter.pages}
 { chapter empty$
@@ -1326,16 +1306,6 @@ FUNCTION {begin.bib}
     { preamble$ write$ newline$ }
   if$
   "\begin{thebibliography}{"  longest.label  * "}" *
-  write$ newline$
-  "\providecommand{\natexlab}[1]{#1}"
-  write$ newline$
-  "\providecommand{\url}[1]{\texttt{#1}}"
-  write$ newline$
-  "\expandafter\ifx\csname urlstyle\endcsname\relax"
-  write$ newline$
-  "  \providecommand{\doi}[1]{doi: #1}\else"
-  write$ newline$
-  "  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi"
   write$ newline$
 }
 
